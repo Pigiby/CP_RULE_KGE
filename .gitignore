@@ -33,3 +33,7 @@ env/
 
 # Generated rules (mined by src/rule_learner.py)
 rules/
+
+# Third-party repos cloned locally (installed separately, not part of this repo)
+kge/
+PyClause/
