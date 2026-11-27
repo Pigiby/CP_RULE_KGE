@@ -31,8 +31,9 @@ env/
 # Logs
 *.log
 
-# Generated rules (mined by src/rule_learner.py)
+# Generated rules (mined by src/rule_learner.py) and data splits (src/data_manager.py)
 rules/
+splits/
 
 # Third-party repos cloned locally (installed separately, not part of this repo)
 kge/

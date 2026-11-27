@@ -8,11 +8,15 @@ import yaml
 from clause import Learner, Options
 from c_clause import Loader
 
+from data_manager import DEFAULT_RATIOS, DataManager
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "configs" / "rule_learners"
 DEFAULT_CONFIG = CONFIG_DIR / "rule_learner.yaml"
+DATA_DIR = ROOT / "kge" / "data"
 
 SUPPORTED_LEARNERS = ("amie", "anyburl")
+DATASETS = ("fb15k", "fb15k-237", "wn18", "wnrr", "yago3-10")
 DEFAULT_LEARNER_CONFIGS = {
     "amie": CONFIG_DIR / "amie_config.yaml",
     "anyburl": CONFIG_DIR / "anyburl.yaml",
@@ -284,7 +288,7 @@ class RuleLearner:
 
     Configuration is split over three YAML files:
       * the general config (``configs/rule_learners/rule_learner.yaml``): which learner,
-        dataset, output location and threshold;
+        output location and threshold (the dataset is passed to the constructor);
       * one learner-specific config per learner (``amie_config.yaml`` / ``anyburl.yaml``),
         referenced from the general config under ``learner_configs``.
 
@@ -300,10 +304,18 @@ class RuleLearner:
 
     def __init__(
         self,
+        dataset: str,
         config_path: str | Path = DEFAULT_CONFIG,
         learner_name: str | None = None,
+        path_train: str | Path | None = None,
+        split_name: str = "original_split",
     ) -> None:
         """
+        :param dataset: name of a dataset folder in ``kge/data`` (e.g. 'wnrr', 'fb15k-237').
+        :param path_train: triples to learn the rules on; default ``kge/data/<dataset>/train.txt``.
+            Usually ``DataManager(...).path("rule")``.
+        :param split_name: subfolder of the rules dir, e.g. 'original_split' or 'transductive_split';
+            rules go to ``<rules_dir>/<split_name>/<dataset>/<learner>_rules.txt``.
         :param config_path: the general rule learner config.
         :param learner_name: 'amie' or 'anyburl'; overrides ``learner`` in the general config.
         """
@@ -324,13 +336,13 @@ class RuleLearner:
         else:
             self.learner_config_path = DEFAULT_LEARNER_CONFIGS[learner_name]
 
-        dataset = self.config.get("dataset") or {}
-        self.dataset_name: str = dataset.get("name", "dataset")
-        self.path_train: Path | None = _resolve(dataset["train"], ROOT) if dataset.get("train") else None
+        self.dataset_name: str = dataset
+        self.path_train: Path = Path(path_train) if path_train is not None else DATA_DIR / dataset / "train.txt"
+        self.split_name = split_name
 
         output = self.config.get("output") or {}
         rules_dir = _resolve(output.get("rules_dir", "rules"), ROOT)
-        self.path_rules: Path = rules_dir / self.dataset_name / f"{self.learner_name}_rules.txt"
+        self.path_rules: Path = rules_dir / split_name / self.dataset_name / f"{self.learner_name}_rules.txt"
         self.overwrite: bool = bool(output.get("overwrite", False))
 
         threshold = self.config.get("threshold") or {}
@@ -417,10 +429,12 @@ class RuleLearner:
         (default: ``swap_only`` in the config), only rules with a swap partner among
         the thresholded rules are returned (see ``find_swap_pairs``).
         """
-        if self.path_train is None:
-            raise ValueError(f"No dataset.train set in {self.config_path}")
         if not self.path_train.exists():
-            raise FileNotFoundError(f"Training triples not found: {self.path_train}")
+            available = sorted(p.parent.name for p in DATA_DIR.glob("*/train.txt"))
+            raise FileNotFoundError(
+                f"Training triples not found: {self.path_train}\n"
+                f"Datasets available in {DATA_DIR}: {available or 'none'} (see README, 'Download the datasets')"
+            )
 
         if self.overwrite or not self.path_rules.exists():
             print(f"{self}: mining rules on {self.path_train} ...")
@@ -484,20 +498,42 @@ class RuleLearner:
         )
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(description="Learn rules with AMIE or AnyBURL and keep those above a threshold.")
+    parser.add_argument("--dataset", nargs="+", default=list(DATASETS),
+                        help=f"one or more dataset folders in kge/data (default: all of {list(DATASETS)}); "
+                             "rules are learned on the original split and on the transductive split")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG, help="general rule learner config")
     parser.add_argument("--learner", choices=SUPPORTED_LEARNERS, default=None, help="override 'learner' in the config")
     parser.add_argument("--min-confidence", type=float, default=None, help="override threshold.min_confidence")
     args = parser.parse_args()
 
-    rule_learner = RuleLearner(config_path=args.config, learner_name=args.learner)
     overrides = {"min_confidence": args.min_confidence} if args.min_confidence is not None else {}
-    rules = rule_learner.learn(**overrides)
+    summary: list[tuple[str, str, int, int]] = []
 
-    print(f"{len(rules)} rules pass the threshold {rule_learner.threshold | overrides}"
-          f"{' and have a swap partner' if rule_learner.swap_only else ''}")
-    for p in rule_learner.swap_pairs(rules):
-        print(f"  R1 [{p.rule.confidence:.3f}]  {p.rule.text}")
-        print(f"  R2 [{p.partner.confidence:.3f}]  {p.text}   (head <-> body atom {p.position})")
-        print(f"     in file:  {p.partner.text}   {p.var_map}\n")
+    for dataset in args.dataset:
+        # original split: rules on the original train; transductive split: rules on the 0.3 'rule' split
+        for ratios in (None, DEFAULT_RATIOS):
+            data = DataManager(dataset, ratios=ratios)
+            print(f"\n{'=' * 20} {data} {'=' * 20}")
+            rule_learner = RuleLearner(
+                dataset=dataset,
+                config_path=args.config,
+                learner_name=args.learner,
+                path_train=data.path("rule"),
+                split_name=data.split_name,
+            )
+            rules = rule_learner.learn(**overrides)
+            pairs = rule_learner.swap_pairs(rules)
+
+            print(f"{len(rules)} rules pass the threshold {rule_learner.threshold | overrides}"
+                  f"{' and have a swap partner' if rule_learner.swap_only else ''}")
+            print(f"{len(pairs)} swap pairs")
+            summary.append((dataset, data.split_name, len(rules), len(pairs)))
+
+    print(f"\n{'dataset':<12}{'split':<22}{'rules':>8}{'pairs':>8}")
+    for dataset, split_name, n_rules, n_pairs in summary:
+        print(f"{dataset:<12}{split_name:<22}{n_rules:>8}{n_pairs:>8}")
+
+if __name__ == "__main__":
+    main()

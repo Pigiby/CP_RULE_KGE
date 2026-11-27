@@ -1,6 +1,8 @@
 # General rule learner config — used by src/rule_learner.py: RuleLearner().
-# Picks the learner, the data and the threshold; the learner-specific settings
+# Picks the learner, the output and the threshold; the learner-specific settings
 # (AMIE flags / AnyBURL properties, JVM options, loader) live in the files below.
+# The dataset is not set here: pass it as an argument (--dataset wnrr), rules are
+# learned on kge/data/<dataset>/train.txt.
 
 learner: amie                      # amie | anyburl
 
@@ -9,14 +11,10 @@ learner_configs:
   amie: amie_config.yaml
   anyburl: anyburl.yaml
 
-# ---------------------------------------------------------------- data
-dataset:
-  name: wnrr
-  train: kge/data/wnrr/train.txt   # relative to the repo root
-
 # ---------------------------------------------------------------- output
 output:
-  rules_dir: rules                 # rules go to <rules_dir>/<dataset.name>/<learner>_rules.txt
+  rules_dir: rules                 # rules go to <rules_dir>/<split_name>/<dataset>/<learner>_rules.txt
+                                   # split_name = original_split | transductive_split (see src/data_manager.py)
   overwrite: false                 # false = reuse an existing rules file instead of mining again
 
 # ---------------------------------------------------------------- threshold
