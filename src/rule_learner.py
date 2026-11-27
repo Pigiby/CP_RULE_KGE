@@ -262,6 +262,21 @@ def find_swap_pairs(rules: list[Rule]) -> list[SwapPair]:
     return pairs
 
 
+def write_swap_pairs(pairs: list[SwapPair], path: str | Path) -> None:
+    """Write swap pairs to a tab-separated file, one pair per line:
+    position, R1 predicted/correct/confidence, R1, R2 predicted/correct/confidence,
+    R2 in R1's variable names, R2 as in the rules file."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        f.write("# position\tr1_predicted\tr1_correct\tr1_confidence\tr1"
+                "\tr2_predicted\tr2_correct\tr2_confidence\tr2\tr2_original\n")
+        for p in pairs:
+            r1, r2 = p.rule, p.partner
+            f.write(f"{p.position}\t{r1.predicted}\t{r1.correct}\t{r1.confidence}\t{r1.text}"
+                    f"\t{r2.predicted}\t{r2.correct}\t{r2.confidence}\t{p.text}\t{r2.text}\n")
+
+
 def keep_swappable(rules: list[Rule]) -> list[Rule]:
     """Keep only the rules that have at least one swap partner in ``rules`` (order preserved)."""
     in_pair = {id(r) for p in find_swap_pairs(rules) for r in (p.rule, p.partner)}
@@ -344,6 +359,7 @@ class RuleLearner:
         output = self.config.get("output") or {}
         rules_dir = _resolve(output.get("rules_dir", "rules"), ROOT)
         self.path_rules: Path = rules_dir / split_name / self.dataset_name / f"{self.learner_name}_rules.txt"
+        self.path_pairs: Path = self.path_rules.with_name(f"{self.learner_name}_swap_pairs.txt")
         self.overwrite: bool = bool(output.get("overwrite", False))
 
         threshold = self.config.get("threshold") or {}
@@ -526,10 +542,11 @@ def main() -> None:
             )
             rules = rule_learner.learn(**overrides)
             pairs = rule_learner.swap_pairs(rules)
+            write_swap_pairs(pairs, rule_learner.path_pairs)
 
             print(f"{len(rules)} rules pass the threshold {rule_learner.threshold | overrides}"
                   f"{' and have a swap partner' if rule_learner.swap_only else ''}")
-            print(f"{len(pairs)} swap pairs")
+            print(f"{len(pairs)} swap pairs written to {rule_learner.path_pairs}")
             summary.append((dataset, data.split_name, len(rules), len(pairs)))
 
     print(f"\n{'dataset':<12}{'split':<22}{'rules':>8}{'pairs':>8}")
