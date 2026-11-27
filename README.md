@@ -118,7 +118,7 @@ python src/rule_learner.py --learner anyburl           # override the learner
 python src/rule_learner.py --min-confidence 0.8        # override the threshold
 ```
 
-Rules are written to `rules/original_split/<dataset>/<learner>_rules.txt`. If that file already exists, it is reused unless `output.overwrite: true` is set in `rule_learner.yaml`.
+All mined rules are written to `rules/<split>/<dataset>/original_rules/<learner>_rules.txt` and the swap pairs among the rules that pass the threshold to `rules/<split>/<dataset>/swapped_rules/<learner>_swap_pairs.txt` (`<split>` = `original_split` or `transductive_split`). If that file already exists, it is reused unless `output.overwrite: true` is set in `rule_learner.yaml`.
 
 From Python:
 

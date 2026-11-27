@@ -358,8 +358,9 @@ class RuleLearner:
 
         output = self.config.get("output") or {}
         rules_dir = _resolve(output.get("rules_dir", "rules"), ROOT)
-        self.path_rules: Path = rules_dir / split_name / self.dataset_name / f"{self.learner_name}_rules.txt"
-        self.path_pairs: Path = self.path_rules.with_name(f"{self.learner_name}_swap_pairs.txt")
+        dataset_dir = rules_dir / split_name / self.dataset_name
+        self.path_rules: Path = dataset_dir / "original_rules" / f"{self.learner_name}_rules.txt"
+        self.path_pairs: Path = dataset_dir / "swapped_rules" / f"{self.learner_name}_swap_pairs.txt"
         self.overwrite: bool = bool(output.get("overwrite", False))
 
         threshold = self.config.get("threshold") or {}

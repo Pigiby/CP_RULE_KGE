@@ -13,7 +13,8 @@ learner_configs:
 
 # ---------------------------------------------------------------- output
 output:
-  rules_dir: rules                 # rules go to <rules_dir>/<split_name>/<dataset>/<learner>_rules.txt
+  rules_dir: rules                 # all mined rules: <rules_dir>/<split_name>/<dataset>/original_rules/<learner>_rules.txt
+                                   # swap pairs:      <rules_dir>/<split_name>/<dataset>/swapped_rules/<learner>_swap_pairs.txt
                                    # split_name = original_split | transductive_split (see src/data_manager.py)
   overwrite: false                 # false = reuse an existing rules file instead of mining again
 
