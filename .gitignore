@@ -1,0 +1,35 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C/C++ extension build output
+*.so
+*.o
+*.dylib
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
+
+# Generated rules (mined by src/rule_learner.py)
+rules/

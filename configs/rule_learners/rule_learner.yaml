@@ -1,0 +1,34 @@
+# General rule learner config — used by src/rule_learner.py: RuleLearner().
+# Picks the learner, the data and the threshold; the learner-specific settings
+# (AMIE flags / AnyBURL properties, JVM options, loader) live in the files below.
+
+learner: amie                      # amie | anyburl
+
+# learner-specific configs, relative to this file
+learner_configs:
+  amie: amie_config.yaml
+  anyburl: anyburl.yaml
+
+# ---------------------------------------------------------------- data
+dataset:
+  name: wnrr
+  train: kge/data/wnrr/train.txt   # relative to the repo root
+
+# ---------------------------------------------------------------- output
+output:
+  rules_dir: rules                 # rules go to <rules_dir>/<dataset.name>/<learner>_rules.txt
+  overwrite: false                 # false = reuse an existing rules file instead of mining again
+
+# ---------------------------------------------------------------- threshold
+# rules returned by RuleLearner.learn(); null = filter off
+threshold:
+  min_confidence: 0.6              # keep rules with confidence >= min_confidence
+  min_correct: null                # keep rules with support (correct predictions) >= min_correct
+  max_length: null                 # keep rules with at most this many body atoms
+  variables_only: true             # drop rules that contain entities
+
+# ---------------------------------------------------------------- swap rules
+# true = keep only rules R1 = h <= ..., b_i, ... for which another rule
+# R2 = b_i <= ..., h, ... (head and one body atom exchanged) also passes the threshold.
+# e.g. inverse relations:  r(X,Y) <= s(Y,X)   and   s(X,Y) <= r(Y,X)
+swap_only: true

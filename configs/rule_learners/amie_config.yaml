@@ -1,0 +1,12 @@
+amie:
+  raw:
+    maxad: 4
+    mins: 2
+
+java_options:
+  - "-Xmx8g"
+  - "-Dfile.encoding=UTF-8"
+
+loader:
+  load_b_rules: true
+  load_u_c_rules: true

@@ -1,0 +1,61 @@
+# AnyBURL (Meilicke et al., 2019) — used by src/rule_learner.py: RuleLearner("anyburl").
+#
+# Rule families (max BODY length, 0 = off):
+#   cyclic           variables only, the body is a path X -> Y      r(X,Y) <= s(X,A), t(A,Y)
+#   grounded_cyclic  cyclic with one constant                       r(X,italy) <= s(X,italy)
+#   acyclic          with constants, the body does not close a cycle r(X,italy) <= s(X,A)
+#   zero             empty body                                      r(X,italy) <=
+
+learner: anyburl
+
+# null = the AnyBURL jar shipped with PyClause (clause/bin/AnyBURL-23-1.jar)
+jar: null
+java_options: ["-Xmx12G"]
+
+# ---------------------------------------------------------------- learning
+learning:
+  time: 100                         # learning time in seconds (SNAPSHOTS_AT)
+  # any key of AnyBURL's config-learn.properties; null values are left out
+  raw:
+    MAX_LENGTH_CYCLIC: 6
+    MAX_LENGTH_GROUNDED_CYCLIC: 0
+    MAX_LENGTH_ACYCLIC: 0
+    ZERO_RULES_ACTIVE: false
+    THRESHOLD_CONFIDENCE: 0
+    THRESHOLD_CORRECT_PREDICTIONS: 2
+    WORKER_THREADS: null            # null = every core
+
+# filters applied when the learned rules are loaded (null = off)
+filters:
+  min_confidence: null
+  min_correct: null
+  max_body_length: null
+
+# ---------------------------------------------------------------- inference (PyClause / c_clause)
+# Any key of the matching section of PyClause's config-default.yaml.
+inference:
+  loader:
+    verbose: false
+    load_zero_rules: true
+  ranking_handler:                  # rankings for (s,p,?) and (?,p,o) of every target triple
+    topk: 100
+    aggregation_function: maxplus   # maxplus | noisyor
+    filter_w_data: true
+    filter_w_target: true
+    disc_at_least: 10
+    verbose: false
+  qa_handler:                       # answers to given queries
+    topk: 100
+    aggregation_function: maxplus
+    filter_w_data: true
+    verbose: false
+  prediction_handler:               # score / explanations of given triples
+    aggregation_function: maxplus
+    num_top_rules: 5
+    collect_explanations: false
+    verbose: false
+
+# ---------------------------------------------------------------- swap rules
+# R1 = h <= ..b_i..  and  R2 = b_i <= ..h..  (head and one body atom exchanged)
+swap:
+  min_conf: 0                    # keep the pairs with both confidences > min_conf (null = all)
